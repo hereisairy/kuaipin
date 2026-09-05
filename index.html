@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>单词教学工具 - 小学英语</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      font-family: 'Nunito', 'Noto Sans SC', sans-serif;
+    }
+    
+    :root {
+      --primary: #FF8C1A;
+      --primary-light: #FFB347;
+      --primary-dark: #FF6B00;
+      --secondary: #36CBCB;
+      --accent-pink: #FF6B9D;
+      --accent-green: #5CD65C;
+      --accent-blue: #4DA6FF;
+      --accent-purple: #B388FF;
+      --text-main: #2D3436;
+      --text-light: #636E72;
+      --bg-warm: #FFF9F0;
+      --bg-white: #FFFFFF;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #FFF9F0 0%, #FFF3E0 100%);
+      min-height: 100vh;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #FF8C1A 0%, #FF6B00 100%);
+      color: white;
+      border-radius: 16px;
+      padding: 10px 24px;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(255, 107, 0, 0.3);
+      transition: all 0.2s ease;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 107, 0, 0.4);
+    }
+    
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+    
+    .btn-secondary {
+      background: white;
+      color: var(--text-main);
+      border-radius: 16px;
+      padding: 10px 24px;
+      font-weight: 600;
+      border: 2px solid #E8E8E8;
+      transition: all 0.2s ease;
+    }
+    
+    .btn-secondary:hover {
+      border-color: var(--primary-light);
+      color: var(--primary-dark);
+    }
+    
+    .card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    }
+    
+    .word-letter {
+      display: inline-block;
+      transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    .word-letter:hover {
+      transform: translateY(-4px);
+    }
+    
+    .word-letter.bounce {
+      animation: bounce 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+    
+    .phonetic-char {
+      display: inline-block;
+      transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    .phonetic-char:hover {
+      transform: translateY(-3px);
+    }
+    
+    .phonetic-char.bounce {
+      animation: bounce 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+    
+    @keyframes bounce {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+    
+    .split-dot {
+      display: inline-block;
+      color: var(--primary);
+      font-weight: 900;
+      margin: 0 4px;
+      animation: popIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+    
+    @keyframes popIn {
+      0% { transform: scale(0); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    
+    .modal-backdrop {
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+    }
+    
+    .unit-tag {
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: #F0F0F0;
+      color: var(--text-light);
+    }
+    
+    .unit-tag:hover {
+      background: #FFE8CC;
+      color: var(--primary-dark);
+    }
+    
+    .unit-tag.active {
+      background: linear-gradient(135deg, #FF8C1A 0%, #FF6B00 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(255, 107, 0, 0.3);
+    }
+    
+    .word-table-row {
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    
+    .word-table-row:hover {
+      background: #FFF5E6;
+      transform: scale(1.01);
+    }
+    
+    .color-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 3px solid transparent;
+    }
+    
+    .color-circle:hover {
+      transform: scale(1.15);
+    }
+    
+    .color-circle.active {
+      border-color: #2D3436;
+      transform: scale(1.15);
+    }
+    
+    .tool-btn {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-light);
+      white-space: nowrap;
+    }
+    
+    .tool-btn:hover {
+      background: #FFF5E6;
+      color: var(--primary-dark);
+    }
+    
+    .tool-btn.active {
+      background: linear-gradient(135deg, #FFE8CC 0%, #FFD699 100%);
+      color: var(--primary-dark);
+    }
+    
+    .toolbar-wrapper {
+      position: fixed;
+      z-index: 30;
+      cursor: grab;
+      user-select: none;
+    }
+    
+    .toolbar-wrapper:active {
+      cursor: grabbing;
+    }
+    
+    .toolbar-wrapper .card {
+      pointer-events: none;
+    }
+    
+    .toolbar-wrapper .tool-btn,
+    .toolbar-wrapper .divider {
+      pointer-events: auto;
+    }
+    
+    .dictation-input {
+      border: none;
+      border-bottom: 4px solid #DDD;
+      background: transparent;
+      font-size: 48px;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 8px;
+      outline: none;
+      font-family: 'Nunito', sans-serif;
+    }
+    
+    .dictation-input:focus {
+      border-bottom-color: var(--primary);
+    }
+    
+    .dictation-input-simple {
+      border: none;
+      background: transparent;
+      font-size: 48px;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 4px;
+      outline: none;
+      font-family: 'Nunito', sans-serif;
+      padding-bottom: 8px;
+      color: #2D3436;
+    }
+    
+    .panel-wrapper {
+      position: fixed;
+      z-index: 30;
+      cursor: grab;
+      user-select: none;
+    }
+    
+    .panel-wrapper > .card {
+      pointer-events: none;
+    }
+    
+    .panel-wrapper .color-circle,
+    .panel-wrapper button,
+    .panel-wrapper .paint-size-btn,
+    .panel-wrapper .paint-shape-btn {
+      pointer-events: auto;
+      cursor: pointer;
+    }
+    
+    .page-transition {
+      animation: slideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    
+    .fade-in {
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .pure-mode .toolbar,
+    .pure-mode .top-bar {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    
+    .pure-mode:hover .toolbar,
+    .pure-mode:hover .top-bar {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    #paint-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+    
+    #paint-canvas.active {
+      pointer-events: auto;
+      cursor: crosshair;
+    }
+    
+    /* 拼读箭头 */
+    #pronounce-arrows {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+    }
+    .pronounce-arrow {
+      position: absolute;
+      pointer-events: auto;
+      user-select: none;
+      filter: drop-shadow(0 4px 8px rgba(239,68,68,0.25));
+    }
+    .arrow-drag-handle {
+      cursor: grab;
+    }
+    .arrow-drag-handle:active {
+      cursor: grabbing;
+    }
+    .arrow-controls {
+      position: absolute;
+      top: -16px;
+      right: -16px;
+      display: flex;
+      gap: 4px;
+      background: white;
+      padding: 4px 6px;
+      border-radius: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      border: 2px solid #fecaca;
+    }
+    .arrow-control-btn {
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 50%;
+      background: #f3f4f6;
+      color: #374151;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      line-height: 1;
+    }
+    .arrow-control-btn:hover {
+      background: #FF8C1A;
+      color: white;
+      transform: scale(1.1);
+    }
+    .arrow-control-btn.arrow-delete {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    .arrow-control-btn.arrow-delete:hover {
+      background: #ef4444;
+      color: white;
+    }
+    
+    .tab-btn {
+      padding: 10px 24px;
+      border-radius: 12px 12px 0 0;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: #F5F5F5;
+      color: var(--text-light);
+    }
+    
+    .tab-btn.active {
+      background: white;
+      color: var(--primary-dark);
+    }
+  </style>
+</head>
+<body class="text-gray-800">
+  <div id="app">
+    <!-- 单词列表页 -->
+    <div id="list-page" class="min-h-screen">
+      <!-- 顶部导航 -->
+      <div class="bg-white shadow-sm sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-black text-xl">
+              W
+            </div>
+            <div>
+              <h1 class="text-xl font-black text-gray-800">单词教学工具</h1>
+              <p class="text-xs text-gray-500">小学英语 · 老师录课专用</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <button onclick="openSyncModal()" class="btn-secondary flex items-center gap-2" title="云同步">
+              <i data-lucide="cloud" class="w-5 h-5"></i>
+              云同步
+            </button>
+            <button onclick="openImportModal()" class="btn-primary flex items-center gap-2">
+              <i data-lucide="plus" class="w-5 h-5"></i>
+              导入单词
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 主内容区 -->
+      <div class="max-w-6xl mx-auto px-6 py-8">
+        <!-- 书本选择 -->
+        <div class="mb-5">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <i data-lucide="library" class="w-5 h-5 text-orange-500"></i>
+              <span class="font-bold text-gray-700">选择书本</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="addBook()" class="text-sm text-orange-500 hover:text-orange-600 font-medium flex items-center gap-1">
+                <i data-lucide="plus" class="w-4 h-4"></i> 新增
+              </button>
+              <button onclick="deleteCurrentBook()" class="text-sm text-gray-400 hover:text-red-500 font-medium flex items-center gap-1" id="btn-delete-book" style="display:none;">
+                <i data-lucide="trash-2" class="w-4 h-4"></i> 删除
+              </button>
+            </div>
+          </div>
+          <div id="book-tags" class="flex flex-wrap gap-2">
+          </div>
+        </div>
+        
+        <!-- 单元选择 -->
+        <div class="mb-5">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <i data-lucide="book-open" class="w-5 h-5 text-teal-500"></i>
+              <span class="font-bold text-gray-700">选择单元</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="addUnit()" class="text-sm text-teal-500 hover:text-teal-600 font-medium flex items-center gap-1" id="btn-add-unit" style="display:none;">
+                <i data-lucide="plus" class="w-4 h-4"></i> 新增
+              </button>
+              <button onclick="deleteCurrentUnit()" class="text-sm text-gray-400 hover:text-red-500 font-medium flex items-center gap-1" id="btn-delete-unit" style="display:none;">
+                <i data-lucide="trash-2" class="w-4 h-4"></i> 删除
+              </button>
+            </div>
+          </div>
+          <div id="unit-tags" class="flex flex-wrap gap-2">
+          </div>
+        </div>
+        
+        <!-- 课选择 -->
+        <div class="mb-6">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <i data-lucide="layers" class="w-5 h-5 text-purple-500"></i>
+              <span class="font-bold text-gray-700">选择课</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="addLesson()" class="text-sm text-purple-500 hover:text-purple-600 font-medium flex items-center gap-1" id="btn-add-lesson" style="display:none;">
+                <i data-lucide="plus" class="w-4 h-4"></i> 新增
+              </button>
+              <button onclick="deleteCurrentLesson()" class="text-sm text-gray-400 hover:text-red-500 font-medium flex items-center gap-1" id="btn-delete-lesson" style="display:none;">
+                <i data-lucide="trash-2" class="w-4 h-4"></i> 删除
+              </button>
+            </div>
+          </div>
+          <div id="lesson-tags" class="flex flex-wrap gap-2">
+          </div>
+        </div>
+        
+        <!-- 单词表 -->
+        <div class="card overflow-hidden">
+          <div class="bg-gradient-to-r from-orange-50 to-amber-50 px-6 py-4 border-b border-orange-100 flex items-center justify-between">
+            <h2 class="font-bold text-lg text-gray-800">📚 单词表</h2>
+            <button onclick="addWordManually()" class="btn-secondary text-sm py-1.5 px-3 flex items-center gap-1">
+              <i data-lucide="plus" class="w-4 h-4"></i> 添加单词
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="bg-gray-50 text-gray-600 text-sm">
+                  <th class="px-6 py-3 text-left font-bold w-16">序号</th>
+                  <th class="px-6 py-3 text-left font-bold">单词</th>
+                  <th class="px-6 py-3 text-left font-bold">音标</th>
+                  <th class="px-6 py-3 text-left font-bold w-24">词性</th>
+                  <th class="px-6 py-3 text-left font-bold">中文释义</th>
+                  <th class="px-6 py-3 text-left font-bold w-20">操作</th>
+                </tr>
+              </thead>
+              <tbody id="word-table-body">
+              </tbody>
+            </table>
+          </div>
+          <div id="empty-state" class="hidden py-16 text-center">
+            <div class="text-6xl mb-4">📝</div>
+            <p class="text-gray-500 mb-4">还没有单词，点击右上角导入单词开始吧！</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 单词详情页 -->
+    <div id="detail-page" class="hidden min-h-screen relative" style="background: linear-gradient(180deg, #FFF9F0 0%, #FFEED6 100%);">
+      <!-- 顶部栏 -->
+      <div class="top-bar fixed top-0 left-0 right-0 z-30 px-6 py-4 flex items-center justify-between bg-gradient-to-b from-white/80 to-transparent backdrop-blur-sm">
+        <button onclick="goBackToList()" class="btn-secondary flex items-center gap-2">
+          <i data-lucide="arrow-left" class="w-5 h-5"></i>
+          返回列表
+        </button>
+        <div class="flex items-center gap-2">
+          <button onclick="prevWord()" class="btn-secondary p-3">
+            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+          </button>
+          <span id="word-index" class="font-bold text-gray-600 min-w-[80px] text-center">1 / 10</span>
+          <button onclick="nextWord()" class="btn-secondary p-3">
+            <i data-lucide="chevron-right" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- 主内容区 -->
+      <div id="word-content" class="flex flex-col items-center justify-center min-h-screen px-6 py-20">
+        <!-- 配图 -->
+        <div id="word-image" class="w-24 h-24 mb-6 rounded-2xl bg-white shadow-lg flex items-center justify-center overflow-hidden">
+          <span class="text-5xl">📖</span>
+        </div>
+        
+        <!-- 单词 -->
+        <div id="word-display" class="mb-6 text-center">
+          <div id="word-spelling" class="text-8xl font-black text-gray-800 tracking-wide mb-4">
+          </div>
+          <div id="word-phonetic" class="text-7xl font-bold text-gray-500 mb-6 tracking-wider">
+          </div>
+        </div>
+        
+        <!-- 中文释义和词性 -->
+        <div id="word-meaning" class="flex items-center gap-4 mb-8">
+          <span id="word-pos" class="text-2xl text-orange-500 font-bold bg-orange-100 px-5 py-2 rounded-full hidden">n.</span>
+          <span class="text-4xl font-bold text-gray-700">老师</span>
+        </div>
+        
+        <!-- 听写区域 -->
+        <div id="dictation-area" class="hidden w-full max-w-2xl text-center fade-in">
+          <div class="mb-12">
+            <span class="text-5xl font-bold text-orange-600" id="dictation-meaning">老师</span>
+          </div>
+          <div class="relative w-full max-w-xl mx-auto">
+            <input 
+              type="text" 
+              id="dictation-input" 
+              class="dictation-input-simple w-full text-5xl py-4 bg-transparent text-center"
+              autocomplete="off"
+              autocapitalize="off"
+            >
+            <div class="absolute bottom-0 left-0 right-0 h-1.5 bg-orange-400 rounded-full"></div>
+          </div>
+          <div id="dictation-feedback" class="mt-8 text-2xl font-bold h-10"></div>
+          <div class="mt-10 flex items-center justify-center gap-4">
+            <button onclick="checkDictation('realtime')" class="btn-secondary" id="btn-realtime">
+              实时批改模式
+            </button>
+            <button onclick="submitDictation()" class="btn-primary">
+              提交批改
+            </button>
+            <button onclick="exitDictation()" class="btn-secondary">
+              退出听写
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 画笔画布 -->
+      <canvas id="paint-canvas"></canvas>
+      
+      <!-- 拼读箭头容器 -->
+      <div id="pronounce-arrows"></div>
+      
+      <!-- 底部工具栏（可拖拽） -->
+      <div id="toolbar-wrapper" class="toolbar-wrapper" style="bottom: 30px; left: 50%; transform: translateX(-50%);">
+        <div class="card px-3 py-2 flex items-center gap-1 shadow-xl">
+          <div class="tool-btn active" onclick="setToolMode('normal')" id="tool-normal">
+            <i data-lucide="mouse-pointer-2" class="w-4 h-4"></i>
+            <span>正常</span>
+          </div>
+          
+          <div class="w-px h-8 bg-gray-200 mx-1 divider"></div>
+          
+          <div class="tool-btn" onclick="setToolMode('color')" id="tool-color">
+            <i data-lucide="palette" class="w-4 h-4"></i>
+            <span>标色</span>
+          </div>
+          
+          <div class="tool-btn" onclick="setToolMode('split')" id="tool-split">
+            <i data-lucide="scissors" class="w-4 h-4"></i>
+            <span>切分</span>
+          </div>
+          
+          <div class="w-px h-8 bg-gray-200 mx-1 divider"></div>
+          
+          <div class="tool-btn" onclick="startDictation()" id="tool-dictation">
+            <i data-lucide="pencil" class="w-4 h-4"></i>
+            <span>听写</span>
+          </div>
+          
+          <div class="tool-btn" onclick="setToolMode('paint')" id="tool-paint">
+            <i data-lucide="brush" class="w-4 h-4"></i>
+            <span>画笔</span>
+          </div>
+          
+          <div class="w-px h-8 bg-gray-200 mx-1 divider"></div>
+          
+          <div class="tool-btn" onclick="togglePureMode()" id="tool-pure">
+            <i data-lucide="maximize" class="w-4 h-4"></i>
+            <span>纯净</span>
+          </div>
+          
+          <div class="tool-btn" onclick="exportWord()" id="tool-export">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            <span>导出</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 标色面板 -->
+      <div id="color-panel-wrapper" class="panel-wrapper hidden" style="left: 50%; bottom: 100px; transform: translateX(-50%);">
+        <div id="color-panel" class="card px-6 py-4 shadow-xl">
+          <div class="flex items-center gap-4">
+            <span class="text-sm font-bold text-gray-600">颜色：</span>
+            <div class="flex items-center gap-2" id="color-picker">
+              <div class="color-circle active" style="background: #FF6B6B;" data-color="#FF6B6B" onclick="selectColor(this)"></div>
+              <div class="color-circle" style="background: #4ECDC4;" data-color="#4ECDC4" onclick="selectColor(this)"></div>
+              <div class="color-circle" style="background: #FFE66D;" data-color="#FFE66D" onclick="selectColor(this)"></div>
+              <div class="color-circle" style="background: #45B7D1;" data-color="#45B7D1" onclick="selectColor(this)"></div>
+              <div class="color-circle" style="background: #96CEB4;" data-color="#96CEB4" onclick="selectColor(this)"></div>
+              <div class="color-circle" style="background: #DDA0DD;" data-color="#DDA0DD" onclick="selectColor(this)"></div>
+              <div class="color-circle" style="background: #FF8C1A;" data-color="#FF8C1A" onclick="selectColor(this)"></div>
+              <div class="color-circle" style="background: #2D3436;" data-color="#2D3436" onclick="selectColor(this)"></div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 mt-4 pt-3 border-t border-gray-100">
+            <button onclick="undoLastColor()" class="btn-secondary text-sm py-2 px-4 flex items-center gap-1.5" title="撤销上一步标色">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6.7 3L3 13"/></svg>
+              撤销
+            </button>
+            <button onclick="addPronounceArrow()" class="btn-secondary text-sm py-2 px-4 flex items-center gap-1.5 text-red-500 hover:text-red-600" title="插入红色拼读箭头">
+              <svg width="14" height="14" viewBox="0 0 48 48" fill="none">
+                <path d="M42 14 C42 28, 28 40, 12 40 C6 40, 4 36, 6 34 C8 32, 12 34, 14 30 C16 26, 14 18, 24 14 C30 12, 36 12, 40 14 Z" stroke="#ef4444" stroke-width="3" fill="#fecaca"/>
+                <path d="M40 6 L44 14 L36 16 Z" fill="#ef4444" stroke="#ef4444" stroke-width="1.5" stroke-linejoin="round"/>
+              </svg>
+              拼读箭头
+            </button>
+            <button onclick="clearColors()" class="btn-secondary text-sm py-2 px-4">
+              清除标色
+            </button>
+            <button onclick="clearSplits()" class="btn-secondary text-sm py-2 px-4">
+              清除切分
+            </button>
+            <button onclick="clearPaintCanvas(); clearPronounceArrows();" class="btn-secondary text-sm py-2 px-4 text-red-500 hover:text-red-600">
+              清空画笔/箭头
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 画画面板 -->
+      <div id="paint-panel-wrapper" class="panel-wrapper hidden" style="left: 50%; bottom: 100px; transform: translateX(-50%);">
+        <div id="paint-panel" class="card px-6 py-4 shadow-xl">
+          <div class="flex items-center gap-6">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-bold text-gray-600">颜色：</span>
+              <div class="flex items-center gap-2" id="paint-color-picker">
+                <div class="color-circle active" style="background: #FF6B6B;" data-color="#FF6B6B" onclick="selectPaintColor(this)"></div>
+                <div class="color-circle" style="background: #FF8C1A;" data-color="#FF8C1A" onclick="selectPaintColor(this)"></div>
+                <div class="color-circle" style="background: #4ECDC4;" data-color="#4ECDC4" onclick="selectPaintColor(this)"></div>
+                <div class="color-circle" style="background: #45B7D1;" data-color="#45B7D1" onclick="selectPaintColor(this)"></div>
+                <div class="color-circle" style="background: #2D3436;" data-color="#2D3436" onclick="selectPaintColor(this)"></div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-bold text-gray-600">粗细：</span>
+              <div class="flex items-center gap-2">
+                <button class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center paint-size-btn active" data-size="3" onclick="setPaintSize(this)">
+                  <div class="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                </button>
+                <button class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center paint-size-btn" data-size="6" onclick="setPaintSize(this)">
+                  <div class="w-3 h-3 rounded-full bg-gray-600"></div>
+                </button>
+                <button class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center paint-size-btn" data-size="10" onclick="setPaintSize(this)">
+                  <div class="w-5 h-5 rounded-full bg-gray-600"></div>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 mt-4 pt-3 border-t border-gray-100">
+            <button onclick="setPaintShape('pen')" class="btn-secondary text-sm py-2 px-4 paint-shape-btn active" id="shape-pen">
+              ✏️ 画笔
+            </button>
+            <button onclick="setPaintShape('arrow')" class="btn-secondary text-sm py-2 px-4 paint-shape-btn" id="shape-arrow">
+              ➡️ 箭头
+            </button>
+            <button onclick="setPaintShape('rect')" class="btn-secondary text-sm py-2 px-4 paint-shape-btn" id="shape-rect">
+              ⬜ 方框
+            </button>
+            <button onclick="setPaintShape('circle')" class="btn-secondary text-sm py-2 px-4 paint-shape-btn" id="shape-circle">
+              ⭕ 圆圈
+            </button>
+            <button onclick="undoPaint()" class="btn-secondary text-sm py-2 px-4">
+              ↶ 撤销
+            </button>
+            <button onclick="clearPaint()" class="btn-secondary text-sm py-2 px-4">
+              🗑️ 清除
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 导入弹窗 -->
+    <div id="import-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop fade-in">
+      <div class="bg-white rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-2xl">
+        <div class="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-5 flex items-center justify-between">
+          <h2 class="text-xl font-black text-white">📥 导入单词</h2>
+          <button onclick="closeImportModal()" class="text-white/80 hover:text-white">
+            <i data-lucide="x" class="w-6 h-6"></i>
+          </button>
+        </div>
+        
+        <div class="flex border-b border-gray-100 px-6 pt-4">
+          <div class="tab-btn active" onclick="switchImportTab('excel')" id="tab-excel">
+            📊 Excel/CSV
+          </div>
+          <div class="tab-btn" onclick="switchImportTab('text')" id="tab-text">
+            📝 文本粘贴
+          </div>
+          <div class="tab-btn" onclick="switchImportTab('manual')" id="tab-manual">
+            ✋ 手动添加
+          </div>
+        </div>
+        
+        <div class="p-6 overflow-y-auto max-h-[50vh]">
+          <!-- Excel 导入 -->
+          <div id="import-excel" class="import-tab">
+            <div class="border-2 border-dashed border-orange-200 rounded-2xl p-10 text-center bg-orange-50/50 hover:bg-orange-50 transition-colors cursor-pointer" onclick="document.getElementById('excel-file').click()">
+              <i data-lucide="upload-cloud" class="w-16 h-16 text-orange-400 mx-auto mb-4"></i>
+              <p class="font-bold text-gray-700 mb-2">点击上传或拖拽文件到此处</p>
+              <p class="text-sm text-gray-500">支持 .xlsx, .xls, .csv 格式</p>
+              <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleExcelUpload(event)">
+            </div>
+            <div class="mt-4 p-4 bg-blue-50 rounded-xl">
+              <p class="text-sm text-blue-700 font-bold mb-1">📋 Excel格式要求：</p>
+              <p class="text-sm text-blue-600">第一行是表头，包含：单词、中文、词性、音标、书本、单元、课</p>
+              <button onclick="downloadTemplate()" class="mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium underline">
+                📥 下载空白模板
+              </button>
+            </div>
+          </div>
+          
+          <!-- 文本粘贴 -->
+          <div id="import-text" class="import-tab hidden">
+            <p class="text-gray-600 mb-3">每行一个单词，格式：单词 音标 词性 中文（空格或Tab分隔）</p>
+            <textarea 
+              id="text-import" 
+              class="w-full h-48 border-2 border-gray-200 rounded-xl p-4 font-mono text-sm focus:border-orange-400 focus:outline-none resize-none"
+              placeholder="teacher /ˈtiːtʃə(r)/ n. 老师&#10;student /ˈstjuːdnt/ n. 学生&#10;book /bʊk/ n. 书"
+            ></textarea>
+          </div>
+          
+          <!-- 手动添加 -->
+          <div id="import-manual" class="import-tab hidden">
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">单词 *</label>
+                <input type="text" id="manual-word" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-orange-400 focus:outline-none" placeholder="请输入英文单词">
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">音标</label>
+                  <input type="text" id="manual-phonetic" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-orange-400 focus:outline-none" placeholder="/ˈtiːtʃə(r/">
+                </div>
+                <div>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">词性</label>
+                  <input type="text" id="manual-pos" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-orange-400 focus:outline-none" placeholder="n. / v. / adj.">
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">中文释义 *</label>
+                <input type="text" id="manual-meaning" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-orange-400 focus:outline-none" placeholder="请输入中文意思">
+              </div>
+              <div class="grid grid-cols-3 gap-3">
+                <div>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">书本</label>
+                  <input type="text" id="manual-book" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none" placeholder="人教版三年级上">
+                </div>
+                <div>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">单元</label>
+                  <input type="text" id="manual-unit" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none" placeholder="Unit 1">
+                </div>
+                <div>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">课</label>
+                  <input type="text" id="manual-lesson" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none" placeholder="Lesson 1">
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 预览区域 -->
+          <div id="import-preview" class="hidden mt-6">
+            <p class="font-bold text-gray-700 mb-3">📋 预览（共 <span id="preview-count">0</span> 个单词）</p>
+            <div class="border border-gray-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+              <table class="w-full text-sm">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-2 text-left">单词</th>
+                    <th class="px-4 py-2 text-left">音标</th>
+                    <th class="px-4 py-2 text-left">词性</th>
+                    <th class="px-4 py-2 text-left">中文</th>
+                  </tr>
+                </thead>
+                <tbody id="preview-body">
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        
+        <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50">
+          <button onclick="closeImportModal()" class="btn-secondary">
+            取消
+          </button>
+          <div class="flex items-center gap-3">
+            <button onclick="previewImport()" class="btn-secondary">
+              预览
+            </button>
+            <button onclick="confirmImport()" class="btn-primary">
+              确认导入
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 编辑弹窗 -->
+    <div id="edit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop fade-in">
+      <div class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
+        <div class="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-5 flex items-center justify-between">
+          <h2 class="text-xl font-black text-white" id="edit-modal-title">新增</h2>
+          <button onclick="closeEditModal()" class="text-white/80 hover:text-white">
+            <i data-lucide="x" class="w-6 h-6"></i>
+          </button>
+        </div>
+        <div class="p-6">
+          <div id="edit-modal-form" class="space-y-4">
+          </div>
+          <div class="mt-6 flex items-center gap-3">
+            <button onclick="closeEditModal()" class="btn-secondary flex-1 py-3">
+              取消
+            </button>
+            <button onclick="confirmEdit()" class="btn-primary flex-1 py-3" id="edit-confirm-btn">
+              确定
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 云同步弹窗 -->
+    <div id="sync-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop fade-in">
+      <div class="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl">
+        <div class="bg-gradient-to-r from-sky-500 to-blue-500 px-6 py-5 flex items-center justify-between">
+          <h2 class="text-xl font-black text-white">☁️ 云同步</h2>
+          <button onclick="closeSyncModal()" class="text-white/80 hover:text-white">
+            <i data-lucide="x" class="w-6 h-6"></i>
+          </button>
+        </div>
+        <div class="p-6 space-y-4">
+          <!-- 设置区域 -->
+          <div class="bg-gray-50 rounded-2xl p-4 space-y-3">
+            <p class="font-bold text-gray-700 flex items-center gap-2">
+              <i data-lucide="settings" class="w-4 h-4"></i> Gitee 配置
+            </p>
+            <div>
+              <label class="block text-sm font-bold text-gray-600 mb-1">Gitee 用户名</label>
+              <input type="text" id="sync-username" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-sky-400 focus:outline-none" placeholder="您的 Gitee 登录名">
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-gray-600 mb-1">仓库名</label>
+              <input type="text" id="sync-repo" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-sky-400 focus:outline-none" placeholder="例如：word-data">
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-gray-600 mb-1">私人令牌（Token）</label>
+              <input type="password" id="sync-token" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-sky-400 focus:outline-none" placeholder="xxxxxxxxxxxxxxxxxxxxx">
+            </div>
+            <div class="flex items-center justify-end gap-2 pt-2">
+              <button onclick="testGiteeConnection()" class="btn-secondary px-4 py-2 text-sm">
+                测试连接
+              </button>
+              <button onclick="saveSyncConfig()" class="btn-primary px-4 py-2 text-sm">
+                保存设置
+              </button>
+            </div>
+          </div>
+          
+          <!-- 操作按钮 -->
+          <div class="space-y-3">
+            <button onclick="uploadToCloud()" class="w-full btn-primary py-4 text-left flex items-center gap-4">
+              <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl">⬆️</div>
+              <div>
+                <p class="font-bold">上传到云端</p>
+                <p class="text-sm opacity-90">把本地的单词数据覆盖保存到 Gitee</p>
+              </div>
+            </button>
+            <button onclick="downloadFromCloud()" class="w-full btn-secondary py-4 text-left flex items-center gap-4">
+              <div class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-2xl">⬇️</div>
+              <div>
+                <p class="font-bold text-gray-800">从云端下载</p>
+                <p class="text-sm text-gray-500">用 Gitee 上的数据覆盖本地数据</p>
+              </div>
+            </button>
+          </div>
+          
+          <!-- 状态 -->
+          <div id="sync-status" class="hidden p-4 rounded-xl text-sm"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 导出弹窗 -->
+    <div id="export-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop fade-in">
+      <div class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
+        <div class="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-5 flex items-center justify-between">
+          <h2 class="text-xl font-black text-white">📤 导出</h2>
+          <button onclick="closeExportModal()" class="text-white/80 hover:text-white">
+            <i data-lucide="x" class="w-6 h-6"></i>
+          </button>
+        </div>
+        <div class="p-6 space-y-4">
+          <button onclick="exportAsImage()" class="w-full btn-secondary py-4 text-left flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-2xl">🖼️</div>
+            <div>
+              <p class="font-bold text-gray-800">导出为图片</p>
+              <p class="text-sm text-gray-500">PNG 格式，高清画质</p>
+            </div>
+          </button>
+          <button onclick="exportAsPDF()" class="w-full btn-secondary py-4 text-left flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center text-2xl">📄</div>
+            <div>
+              <p class="font-bold text-gray-800">导出为 PDF</p>
+              <p class="text-sm text-gray-500">适合打印分享</p>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
