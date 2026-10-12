@@ -253,9 +253,14 @@ function renderWordTable() {
         </td>
         <td class="px-6 py-4 text-gray-700">${word.meaning}</td>
         <td class="px-6 py-4">
-          <button onclick="deleteWord('${word.id}', event)" class="text-gray-400 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-all" title="删除单词">
-            <i data-lucide="trash-2" class="w-4 h-4"></i>
-          </button>
+          <div class="flex items-center gap-1">
+            <button onclick="event.stopPropagation(); openEditModal('word', 'edit', null, '${word.id}')" class="text-gray-400 hover:text-orange-500 p-2 rounded-lg hover:bg-orange-50 transition-all" title="编辑单词">
+              <i data-lucide="pencil" class="w-4 h-4"></i>
+            </button>
+            <button onclick="deleteWord('${word.id}', event)" class="text-gray-400 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-all" title="删除单词">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
         </td>
       </tr>
     `;
@@ -350,6 +355,11 @@ function renderWordSpelling() {
   let html = '';
   
   letters.forEach((letter, index) => {
+    // 空格渲染为可见间隙（用固定宽度的空白 span）
+    if (letter === ' ') {
+      html += `<span class="word-space"></span>`;
+      return;
+    }
     const colorObj = word.letterColors?.find(c => c.index === index);
     const color = colorObj?.color || '';
     const hasSplit = word.splitPoints?.includes(index);
@@ -1366,6 +1376,17 @@ function switchImportTab(tab) {
   document.getElementById(`import-${tab}`)?.classList.remove('hidden');
 }
 
+// 清理字符串：去除首尾所有空白（含全角空格\u2003、不间断空格\u00A0等），中间多个空白合并为单个普通空格
+function cleanStr(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/[\u200B\uFEFF]/g, '')          // 去掉零宽空格、BOM
+    .replace(/[\u2002\u2003\u2009\u200A\u00A0\u3000]/g, ' ')  // 全角/特殊空格 → 普通空格
+    .replace(/[ \t]+/g, ' ')                 // 多个空格/Tab → 单个空格
+    .replace(/^[ \n\r]+/, '')                // 去首尾换行/空格
+    .replace(/[ \n\r]+$/, '');
+}
+
 function handleExcelUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -1377,21 +1398,78 @@ function handleExcelUpload(event) {
     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
     const jsonData = XLSX.utils.sheet_to_json(firstSheet);
     
-    state.importBuffer = jsonData.map((row, index) => ({
-      id: `import-${Date.now()}-${index}`,
-      word: row['单词'] || row['word'] || row['Word'] || '',
-      meaning: row['中文'] || row['释义'] || row['meaning'] || '',
-      partOfSpeech: row['词性'] || row['pos'] || '',
-      phonetic: row['音标'] || row['phonetic'] || '',
-      book: row['书本'] || row['book'] || row['Book'] || '',
-      unit: row['单元'] || row['unit'] || '未分组',
-      lesson: row['课'] || row['lesson'] || '',
-      tags: [],
-      letterColors: [],
-      splitPoints: [],
-      imageUrl: '',
-      order: state.words.length + index + 1
-    })).filter(w => w.word && w.meaning);
+    let lastBook = '';
+    state.importBuffer = jsonData.map((row, index) => {
+      let word = cleanStr(row['单词'] || row['word'] || row['Word'] || '');
+      let meaning = cleanStr(row['中文'] || row['释义'] || row['meaning'] || '');
+      let phonetic = cleanStr(row['音标'] || row['phonetic'] || '');
+      let partOfSpeech = cleanStr(row['词性'] || row['pos'] || '');
+      let book = cleanStr(row['书本'] || row['book'] || row['Book'] || '');
+      let unit = cleanStr(row['单元'] || row['unit'] || '');
+      let lesson = cleanStr(row['课'] || row['lesson'] || '');
+      
+      // 向下填充书本：如果当前行书本为空，沿用上行的书本
+      if (book) {
+        lastBook = book;
+      } else {
+        book = lastBook;
+      }
+      
+      // 处理特殊情况：单词列里用 \u2003 塞了 单词/音标/词性/中文（中文列为空）
+      if (!meaning && word.indexOf('\u2003') >= 0) {
+        const parts = word.split(/\u2003+/).map(p => cleanStr(p)).filter(p => p);
+        if (parts.length >= 2) {
+          word = parts[0];
+          // 第1段如果含空格且空格后以 / 开头，说明音标塞在单词后面，如 "may /meɪ/"
+          const spaceIdx = word.indexOf(' ');
+          if (spaceIdx > 0 && word.charAt(spaceIdx + 1) === '/') {
+            phonetic = word.substring(spaceIdx + 1);
+            word = word.substring(0, spaceIdx);
+          }
+          // 第2段如果以 / 开头就是音标
+          let i = 1;
+          if (parts[i] && parts[i].charAt(0) === '/') {
+            phonetic = parts[i];
+            i++;
+          }
+          // 剩下的最后一段是中文，倒数第二段可能是词性
+          const remaining = parts.slice(i);
+          if (remaining.length >= 2) {
+            const secondLast = remaining[remaining.length - 2];
+            if (secondLast.match(/[a-z]+\./i) || secondLast.indexOf('词') >= 0 || secondLast === '短语') {
+              partOfSpeech = secondLast;
+              meaning = remaining[remaining.length - 1];
+            } else {
+              meaning = remaining.join(' ');
+            }
+          } else if (remaining.length === 1) {
+            meaning = remaining[0];
+          }
+        }
+      }
+      
+      // 单元如果是纯数字，统一加 "Unit " 前缀，保持和示例数据一致
+      if (unit && /^\d+$/.test(unit)) {
+        unit = 'Unit ' + unit;
+      }
+      
+      return {
+        id: `import-${Date.now()}-${index}`,
+        word,
+        meaning,
+        partOfSpeech,
+        phonetic,
+        book,
+        unit: unit || '未分组',
+        lesson,
+        tags: [],
+        letterColors: [],
+        phoneticColors: [],
+        splitPoints: [],
+        imageUrl: '',
+        order: state.words.length + index + 1
+      };
+    }).filter(w => w.word && w.meaning);
     
     showImportPreview();
   };
@@ -1601,11 +1679,12 @@ function downloadTemplate() {
 let editModalState = {
   type: 'book',
   mode: 'add',
-  currentValue: ''
+  currentValue: '',
+  wordId: null
 };
 
-function openEditModal(type, mode, value) {
-  editModalState = { type, mode, currentValue: value || '' };
+function openEditModal(type, mode, value, wordId) {
+  editModalState = { type, mode, currentValue: value || '', wordId: wordId || null };
   
   const modal = document.getElementById('edit-modal');
   const title = document.getElementById('edit-modal-title');
@@ -1615,8 +1694,55 @@ function openEditModal(type, mode, value) {
   const typeNames = {
     book: '书本',
     unit: '单元',
-    lesson: '课'
+    lesson: '课',
+    word: '单词'
   };
+  
+  if (type === 'word') {
+    title.textContent = '编辑单词';
+    confirmBtn.textContent = '保存';
+    confirmBtn.className = 'btn-primary flex-1 py-3';
+    
+    const word = state.words.find(w => w.id === wordId);
+    if (!word) return;
+    
+    form.innerHTML = `
+      <div class="grid grid-cols-2 gap-3">
+        <div class="col-span-2">
+          <label class="block text-sm font-bold text-gray-700 mb-1">单词 *</label>
+          <input type="text" id="edit-word" value="${word.word.replace(/"/g, '&quot;')}" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 focus:border-orange-400 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1">音标</label>
+          <input type="text" id="edit-phonetic" value="${(word.phonetic || '').replace(/"/g, '&quot;')}" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 focus:border-orange-400 focus:outline-none" placeholder="/həˈləʊ/">
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1">词性</label>
+          <input type="text" id="edit-pos" value="${(word.partOfSpeech || '').replace(/"/g, '&quot;')}" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 focus:border-orange-400 focus:outline-none" placeholder="n. / 短语">
+        </div>
+        <div class="col-span-2">
+          <label class="block text-sm font-bold text-gray-700 mb-1">中文释义 *</label>
+          <input type="text" id="edit-meaning" value="${(word.meaning || '').replace(/"/g, '&quot;')}" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 focus:border-orange-400 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1">书本</label>
+          <input type="text" id="edit-book" value="${(word.book || '').replace(/"/g, '&quot;')}" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 focus:border-orange-400 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1">单元</label>
+          <input type="text" id="edit-unit" value="${(word.unit || '').replace(/"/g, '&quot;')}" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 focus:border-orange-400 focus:outline-none">
+        </div>
+        <div class="col-span-2">
+          <label class="block text-sm font-bold text-gray-700 mb-1">课</label>
+          <input type="text" id="edit-lesson" value="${(word.lesson || '').replace(/"/g, '&quot;')}" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 focus:border-orange-400 focus:outline-none">
+        </div>
+      </div>
+    `;
+    
+    modal.classList.remove('hidden');
+    setTimeout(() => document.getElementById('edit-word').focus(), 100);
+    return;
+  }
   
   if (mode === 'add') {
     title.textContent = `新增${typeNames[type]}`;
@@ -1667,7 +1793,37 @@ function closeEditModal() {
 }
 
 function confirmEdit() {
-  const { type, mode, currentValue } = editModalState;
+  const { type, mode, currentValue, wordId } = editModalState;
+  
+  // 编辑单词
+  if (type === 'word' && wordId) {
+    const word = state.words.find(w => w.id === wordId);
+    if (!word) return;
+    
+    const newWord = document.getElementById('edit-word').value.trim();
+    const newMeaning = document.getElementById('edit-meaning').value.trim();
+    if (!newWord || !newMeaning) {
+      alert('单词和中文释义不能为空');
+      return;
+    }
+    
+    word.word = cleanStr(newWord);
+    word.meaning = cleanStr(newMeaning);
+    word.phonetic = cleanStr(document.getElementById('edit-phonetic').value);
+    word.partOfSpeech = cleanStr(document.getElementById('edit-pos').value);
+    word.book = cleanStr(document.getElementById('edit-book').value);
+    word.unit = cleanStr(document.getElementById('edit-unit').value) || '未分组';
+    word.lesson = cleanStr(document.getElementById('edit-lesson').value);
+    
+    updateFilters();
+    saveData();
+    renderBookTags();
+    renderUnitTags();
+    renderLessonTags();
+    renderWordTable();
+    closeEditModal();
+    return;
+  }
   
   if (mode === 'add') {
     const input = document.getElementById('edit-input');
