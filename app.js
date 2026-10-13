@@ -10,6 +10,7 @@ let state = {
   currentUnit: null,
   currentLesson: null,
   currentWordIndex: 0,
+  filteredWords: [],
   toolMode: 'normal',
   selectedColor: '#FF6B6B',
   isPureMode: false,
@@ -160,7 +161,7 @@ function getFilteredWords() {
   if (state.currentLesson) {
     words = words.filter(w => w.lesson === state.currentLesson);
   }
-  return words.sort((a, b) => a.order - b.order);
+  return words.sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
 function renderBookTags() {
@@ -409,6 +410,7 @@ function updateWordImage(word) {
 }
 
 function prevWord() {
+  if (!state.filteredWords || state.filteredWords.length === 0) return;
   if (state.currentWordIndex > 0) {
     state.currentWordIndex--;
     renderWordDetail();
@@ -417,6 +419,7 @@ function prevWord() {
 }
 
 function nextWord() {
+  if (!state.filteredWords || state.filteredWords.length === 0) return;
   if (state.currentWordIndex < state.filteredWords.length - 1) {
     state.currentWordIndex++;
     renderWordDetail();
@@ -1236,7 +1239,8 @@ function addPronounceArrow() {
   controls.style.display = 'none';
   
   // 点击箭头显示控制条，并隐藏其他箭头的控制条
-  arrow.addEventListener('click', (e) => {
+  arrow.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.arrow-controls') || e.target.closest('.arrow-control-btn')) return;
     e.stopPropagation();
     // 先隐藏所有控制条
     document.querySelectorAll('.pronounce-arrow .arrow-controls').forEach(c => c.style.display = 'none');
@@ -1250,7 +1254,7 @@ function addPronounceArrow() {
 }
 
 // 点击页面其他地方隐藏所有箭头控制条
-document.addEventListener('click', (e) => {
+document.addEventListener('mousedown', (e) => {
   if (!e.target.closest('.pronounce-arrow')) {
     document.querySelectorAll('.pronounce-arrow .arrow-controls').forEach(c => c.style.display = 'none');
   }
@@ -2164,13 +2168,14 @@ async function downloadFromCloud() {
       throw new Error('数据格式不正确');
     }
     
-    state.words = payload.words.map(w => {
+    state.words = payload.words.map((w, idx) => {
       if (!w.id) w.id = 'word-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
       if (!w.tags) w.tags = [];
       if (!w.letterColors) w.letterColors = [];
       if (!w.phoneticColors) w.phoneticColors = [];
       if (!w.splitPoints) w.splitPoints = [];
       if (!w.imageUrl) w.imageUrl = '';
+      if (w.order == null) w.order = idx + 1;
       return w;
     });
     
@@ -2333,13 +2338,14 @@ async function autoDownloadFromCloud(silent) {
     }
 
     // 应用云端数据
-    state.words = payload.words.map(w => {
+    state.words = payload.words.map((w, idx) => {
       if (!w.id) w.id = 'word-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
       if (!w.tags) w.tags = [];
       if (!w.letterColors) w.letterColors = [];
       if (!w.phoneticColors) w.phoneticColors = [];
       if (!w.splitPoints) w.splitPoints = [];
       if (!w.imageUrl) w.imageUrl = '';
+      if (w.order == null) w.order = idx + 1;
       return w;
     });
 

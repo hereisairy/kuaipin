@@ -348,8 +348,9 @@
     }
     .arrow-controls {
       position: absolute;
-      top: -16px;
-      right: -16px;
+      top: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
       display: flex;
       gap: 4px;
       background: white;
@@ -357,6 +358,7 @@
       border-radius: 20px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       border: 2px solid #fecaca;
+      white-space: nowrap;
     }
     .arrow-control-btn {
       width: 24px;
@@ -530,7 +532,7 @@
     <!-- 单词详情页 -->
     <div id="detail-page" class="hidden min-h-screen relative" style="background: linear-gradient(180deg, #FFF9F0 0%, #FFEED6 100%);">
       <!-- 顶部栏 -->
-      <div class="top-bar fixed top-0 left-0 right-0 z-30 px-6 py-4 flex items-center justify-between bg-gradient-to-b from-white/80 to-transparent backdrop-blur-sm">
+      <div class="top-bar fixed top-0 left-0 right-0 z-40 px-6 py-4 flex items-center justify-between bg-gradient-to-b from-white/80 to-transparent backdrop-blur-sm" style="pointer-events: auto;">
         <button onclick="goBackToList()" class="btn-secondary flex items-center gap-2">
           <i data-lucide="arrow-left" class="w-5 h-5"></i>
           返回列表
