@@ -422,8 +422,14 @@ function nextWord() {
   if (!state.filteredWords || state.filteredWords.length === 0) return;
   if (state.currentWordIndex < state.filteredWords.length - 1) {
     state.currentWordIndex++;
+    // 听写模式下退出听写，显示新单词的拼读页面
+    const dictationArea = document.getElementById('dictation-area');
+    if (dictationArea && !dictationArea.classList.contains('hidden')) {
+      exitDictation();
+    }
     renderWordDetail();
     clearPaint();
+    clearPronounceArrows();
   }
 }
 
@@ -843,7 +849,10 @@ function setToolMode(mode) {
 function startDictation() {
   const word = getCurrentWord();
   if (!word) return;
-  
+
+  // 清除已有拼读箭头
+  clearPronounceArrows();
+
   document.getElementById('word-display').classList.add('hidden');
   document.getElementById('word-image').classList.add('hidden');
   document.getElementById('word-meaning').classList.add('hidden');
