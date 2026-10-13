@@ -850,8 +850,9 @@ function startDictation() {
   const word = getCurrentWord();
   if (!word) return;
 
-  // 清除已有拼读箭头
+  // 清除已有拼读箭头和画笔标注
   clearPronounceArrows();
+  clearPaint();
 
   document.getElementById('word-display').classList.add('hidden');
   document.getElementById('word-image').classList.add('hidden');
